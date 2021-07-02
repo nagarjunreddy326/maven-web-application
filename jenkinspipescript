@@ -1,0 +1,26 @@
+node{
+def mavenhome = tool name: "maven3.6.3"
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '5', daysToKeepStr: '', numToKeepStr: '5')), [$class: 'JobLocalConfiguration', changeReasonComment: ''], pipelineTriggers([pollSCM('* * * * *')])])
+stage('checkoutcode'){
+   git branch: 'development', credentialsId: 'f25162af-9797-41b7-a4d5-3a185f97d6d8', url: 'https://github.com/nagarjunreddy326/maven-web-application.git' 
+}
+  stage('build'){
+  sh "${mavenhome}/bin/mvn clean package"
+  }
+  stage('excutesonarcubereport'){
+  sh "${mavenhome}/bin/mvn sonar:sonar"
+  }
+  stage('uploadartifactintonexus'){
+  sh "${mavenhome}/bin/mvn clean deploy"
+  }
+  stage('deployintotomcatserver'){
+      sshagent(['958a9ee1-5c2f-455f-aa9a-9f6e6f93bace']) {
+          sh "scp -o stricthostkeychecking=no target/maven-web-application.war ec2-user@13.232.88.63:/opt/apache-tomcat-9.0.46/webapps/"
+  }
+  }
+  stage('sendemailnotification'){
+      emailext body: '''build is over
+regards 
+mithuntechnologies''', subject: 'build is over', to: 'nagarjunreddy326@gmail.om'
+  }
+}
